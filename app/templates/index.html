@@ -134,6 +134,47 @@
             </div>
         </div>
     </div>
+
+    <div id="editWsModal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn" onclick="closeEditWsModal()">&times;</span>
+            <h2>Editar Área de Trabalho</h2>
+            <input type="hidden" id="editWsId">
+            <label>Nome</label>
+            <input type="text" id="editWsTitle" class="modal-input">
+            <label>Ícone</label>
+            <input type="text" id="editWsIcon" class="modal-input">
+            <div style="text-align: right; margin-top: 20px;">
+                <button onclick="saveWsEdit()" class="btn-primary" style="background:var(--accent-color); color:black; font-weight:bold; padding:10px 20px; border:none; border-radius:6px; cursor:pointer;">Salvar Alterações</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="editBoardModal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn" onclick="closeEditBoardModal()">&times;</span>
+            <h2>Editar Quadro</h2>
+            <input type="hidden" id="editBoardId">
+            <label>Nome do Quadro</label>
+            <input type="text" id="editBoardTitleInput" class="modal-input">
+            <label>Descrição</label>
+            <textarea id="editBoardDescInput" class="modal-input" rows="3"></textarea>
+            <div style="text-align: right; margin-top: 20px;">
+                <button onclick="saveBoardEdit()" class="btn-primary" style="background:var(--accent-color); color:black; font-weight:bold; padding:10px 20px; border:none; border-radius:6px; cursor:pointer;">Salvar Alterações</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="customAlert" class="custom-alert-overlay">
+        <div class="custom-alert-box">
+            <div id="alertTitle" class="custom-alert-title">Atenção</div>
+            <div id="alertMessage" class="custom-alert-msg">Tem certeza?</div>
+            <div class="custom-alert-actions">
+                <button id="btnAlertCancel" class="btn-cancel" onclick="closeCustomAlert()">Cancelar</button>
+                <button id="btnAlertConfirm" class="btn-confirm">Confirmar</button>
+            </div>
+        </div>
+    </div>
     
     <input type="hidden" id="currentBoardId" value="">
 

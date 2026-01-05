@@ -462,3 +462,146 @@ header {
 .workspace-item:hover .btn-add-board {
     opacity: 1;
 }
+
+/* --- CHECKBOX CIRCULAR MODERNO --- */
+.task-check-wrapper {
+    position: relative;
+    width: 20px;
+    height: 20px;
+    margin-right: 10px;
+    cursor: pointer;
+}
+
+/* Esconde o input original */
+.task-check-wrapper input {
+    opacity: 0;
+    cursor: pointer;
+    width: 0;
+    height: 0;
+}
+
+/* A "Bolinha" */
+.checkmark {
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 18px;
+    width: 18px;
+    background-color: transparent;
+    border: 2px solid var(--text-secondary);
+    border-radius: 50%; /* Faz ficar redondo */
+    transition: all 0.2s ease;
+}
+
+/* Hover */
+.task-check-wrapper:hover .checkmark {
+    border-color: var(--accent-color);
+    background-color: rgba(255, 255, 255, 0.05);
+}
+
+/* Quando marcado (Checked) */
+.task-check-wrapper input:checked ~ .checkmark {
+    background-color: var(--accent-color);
+    border-color: var(--accent-color);
+    box-shadow: 0 0 10px var(--accent-color); /* Brilho neon */
+}
+
+/* O tiquezinho (ícone de check) dentro da bolinha */
+.checkmark:after {
+    content: "";
+    position: absolute;
+    display: none;
+}
+
+.task-check-wrapper input:checked ~ .checkmark:after {
+    display: block;
+}
+
+.task-check-wrapper .checkmark:after {
+    left: 6px;
+    top: 2px;
+    width: 4px;
+    height: 8px;
+    border: solid black; /* Cor do check dentro da cor neon */
+    border-width: 0 2px 2px 0;
+    transform: rotate(45deg);
+}
+
+/* Cabeçalho do Card para alinhar o check com o titulo */
+.card-header-flex {
+    display: flex;
+    align-items: center;
+    margin-bottom: 5px;
+}
+
+/* --- CUSTOM ALERTS & CONFIRMS (Overlay do Sistema) --- */
+.custom-alert-overlay {
+    display: none;
+    position: fixed;
+    z-index: 9999;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.8);
+    backdrop-filter: blur(4px);
+    justify-content: center;
+    align-items: center;
+}
+
+.custom-alert-box {
+    background: #1e1e1e;
+    border: 1px solid var(--glass-border);
+    padding: 25px;
+    border-radius: 15px;
+    max-width: 400px;
+    text-align: center;
+    box-shadow: 0 15px 40px rgba(0,0,0,0.7);
+    animation: popIn 0.3s ease;
+}
+
+@keyframes popIn {
+    from { transform: scale(0.8); opacity: 0; }
+    to { transform: scale(1); opacity: 1; }
+}
+
+.custom-alert-title {
+    font-size: 1.2rem;
+    color: white;
+    margin-bottom: 10px;
+    font-weight: bold;
+}
+
+.custom-alert-msg {
+    color: var(--text-secondary);
+    margin-bottom: 25px;
+    font-size: 0.95rem;
+    line-height: 1.5;
+}
+
+.custom-alert-actions {
+    display: flex;
+    justify-content: center;
+    gap: 15px;
+}
+
+.btn-confirm {
+    background: var(--accent-color);
+    color: black;
+    padding: 10px 20px;
+    border-radius: 8px;
+    border: none;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.btn-cancel {
+    background: transparent;
+    border: 1px solid #555;
+    color: white;
+    padding: 10px 20px;
+    border-radius: 8px;
+    cursor: pointer;
+}
+
+.btn-cancel:hover { background: rgba(255,255,255,0.1); }

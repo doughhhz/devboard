@@ -9,6 +9,10 @@ class WorkspaceBase(BaseModel):
 class WorkspaceCreate(WorkspaceBase):
     pass
 
+class WorkspaceUpdate(BaseModel): # <--- NOVO
+    title: Optional[str] = None
+    icon: Optional[str] = None
+
 class WorkspaceResponse(WorkspaceBase):
     id: int
     class Config:
@@ -21,6 +25,10 @@ class BoardBase(BaseModel):
 
 class BoardCreate(BoardBase):
     workspace_id: int
+
+class BoardUpdate(BaseModel): # <--- NOVO
+    title: Optional[str] = None
+    description: Optional[str] = None
 
 class BoardResponse(BoardBase):
     id: int

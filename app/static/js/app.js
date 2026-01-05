@@ -1,24 +1,73 @@
 /**
- * DEVBOARD - Lógica Principal
- * Gerencia a navegação (Sidebar), o Quadro Kanban e as Configurações.
+ * DEVBOARD v1.1 - Lógica Completa
+ * Inclui: Custom Alerts, CRUD de Estrutura, Checkboxes, Drag & Drop e Temas.
  */
 
-const API_COLUMNS = "/api/columns";
 const API_TASKS = "/tasks";
 const API_WORKSPACES = "/api/workspaces";
 const API_BOARDS = "/api/boards";
-const API_SEED = "/api/seed"; // Rota opcional para criar dados de teste
+const API_COLUMNS = "/api/columns";
+const API_SEED = "/api/seed";
 
 let currentBoardId = null;
 
 // --- INICIALIZAÇÃO ---
 document.addEventListener("DOMContentLoaded", () => {
-    loadPreferences(); // Aplica tema salvo
-    loadStructure();   // Carrega a sidebar
+    loadPreferences();
+    loadStructure();
 });
 
 // ==========================================================================
-// 1. GERENCIAMENTO DA ESTRUTURA (SIDEBAR)
+// 1. SISTEMA DE ALERTAS CUSTOMIZADOS (UI/UX)
+// ==========================================================================
+
+const customAlertOverlay = document.getElementById("customAlert");
+const alertTitle = document.getElementById("alertTitle");
+const alertMessage = document.getElementById("alertMessage");
+const btnConfirm = document.getElementById("btnAlertConfirm");
+const btnCancel = document.getElementById("btnAlertCancel");
+
+// Função para Confirmação (Sim/Não)
+function showConfirm(title, msg, onConfirm) {
+    alertTitle.innerText = title;
+    alertMessage.innerText = msg;
+    
+    btnCancel.style.display = "inline-block";
+    btnConfirm.innerText = "Confirmar";
+    
+    // Remove listeners antigos para evitar duplicação
+    const newBtn = btnConfirm.cloneNode(true);
+    btnConfirm.parentNode.replaceChild(newBtn, btnConfirm);
+    
+    newBtn.onclick = () => {
+        onConfirm();
+        closeCustomAlert();
+    };
+    
+    customAlertOverlay.style.display = "flex";
+}
+
+// Função para Alerta Simples (OK)
+function showAlert(title, msg) {
+    alertTitle.innerText = title;
+    alertMessage.innerText = msg;
+    btnCancel.style.display = "none";
+    btnConfirm.innerText = "OK";
+    
+    const newBtn = btnConfirm.cloneNode(true);
+    btnConfirm.parentNode.replaceChild(newBtn, btnConfirm);
+    
+    newBtn.onclick = closeCustomAlert;
+    
+    customAlertOverlay.style.display = "flex";
+}
+
+function closeCustomAlert() {
+    customAlertOverlay.style.display = "none";
+}
+
+// ==========================================================================
+// 2. SIDEBAR E ESTRUTURA (Com Edição e Exclusão)
 // ==========================================================================
 
 async function loadStructure() {
@@ -29,31 +78,31 @@ async function loadStructure() {
         sidebar.innerHTML = '';
 
         if (workspaces.length === 0) {
-            sidebar.innerHTML = `<div style="padding:20px; text-align:center; color:#666;">Sem dados.</div>`;
+            sidebar.innerHTML = `<div style="padding:20px; text-align:center; color:#666;">Sem dados.<br>Crie uma área nova ou restaure o backup abaixo.</div>`;
             return;
         }
 
         workspaces.forEach(ws => {
             const wsDiv = document.createElement('div');
-            wsDiv.className = 'workspace-item expanded'; // Começa expandido por padrão
+            wsDiv.className = 'workspace-item expanded'; // Expandido por padrão
             wsDiv.id = `ws-${ws.id}`;
 
-            // 1. Cabeçalho do Workspace (Seta + Título + Ações)
-            // Note o onclick no header para alternar (toggle)
+            // Cabeçalho do Workspace
             wsDiv.innerHTML = `
-                <div class="workspace-header" onclick="toggleWorkspace(${ws.id})">
-                    <div class="ws-title-container">
-                        <span class="arrow-icon">▶</span>
+                <div class="workspace-header">
+                    <div class="ws-title-container" onclick="toggleWorkspace(${ws.id})">
+                        <span class="arrow-icon">▼</span>
                         <span>${ws.icon} ${ws.title}</span>
                     </div>
-                    <div class="sidebar-actions" onclick="event.stopPropagation()">
+                    <div class="sidebar-actions">
+                        <button class="btn-sidebar-icon" onclick="openEditWsModal(${ws.id}, '${ws.title}', '${ws.icon}')" title="Editar Área">✎</button>
                         <button class="btn-sidebar-icon" onclick="openBoardModal(${ws.id})" title="Novo Quadro">+</button>
-                        <button class="btn-sidebar-icon danger" onclick="deleteWorkspace(${ws.id})" title="Excluir Área">🗑️</button>
+                        <button class="btn-sidebar-icon danger" onclick="confirmDeleteWorkspace(${ws.id})" title="Excluir Área">🗑️</button>
                     </div>
                 </div>
             `;
 
-            // 2. Container dos Quadros (Collapsible)
+            // Container de Boards
             const boardsContainer = document.createElement('div');
             boardsContainer.className = 'boards-container';
             
@@ -63,263 +112,299 @@ async function loadStructure() {
                     boardDiv.className = 'board-item';
                     boardDiv.id = `board-btn-${board.id}`;
                     
-                    // Conteúdo do botão do board + Lixeira
+                    // Tratamento para descrição null
+                    const safeDesc = board.description ? board.description.replace(/'/g, "\\'") : "";
+
                     boardDiv.innerHTML = `
-                        <div onclick="selectBoard(${board.id}, '${board.title}', '${board.description || ''}')" style="flex-grow:1; display:flex; align-items:center;">
+                        <div onclick="selectBoard(${board.id}, '${board.title}', '${safeDesc}')" style="flex-grow:1; display:flex; align-items:center; cursor:pointer">
                             <span style="opacity:0.4; margin-right:8px;">#</span>
                             ${board.title}
                         </div>
                         <div class="sidebar-actions">
-                            <button class="btn-sidebar-icon danger" onclick="deleteBoard(${board.id})" title="Excluir Quadro">×</button>
+                            <button class="btn-sidebar-icon" onclick="openEditBoardModal(${board.id}, '${board.title}', '${safeDesc}')" title="Editar Quadro">✎</button>
+                            <button class="btn-sidebar-icon danger" onclick="confirmDeleteBoard(${board.id})" title="Excluir Quadro">×</button>
                         </div>
                     `;
                     boardsContainer.appendChild(boardDiv);
                 });
             } else {
-                boardsContainer.innerHTML = '<div style="padding:5px 20px 5px 35px; font-size:0.75rem; color:#555;">Vazio</div>';
+                boardsContainer.innerHTML = '<div style="padding:5px 20px; color:#555; font-size:0.8rem; font-style:italic;">Sem quadros</div>';
             }
 
             wsDiv.appendChild(boardsContainer);
             sidebar.appendChild(wsDiv);
         });
 
-        // Re-seleciona visualmente o quadro atual se existir
+        // Mantém seleção ativa após refresh
         if (currentBoardId) {
             const btn = document.getElementById(`board-btn-${currentBoardId}`);
             if (btn) btn.classList.add('active');
+        } else if (workspaces[0]?.boards?.length > 0) {
+            // Seleciona o primeiro automaticamente
+            const first = workspaces[0].boards[0];
+            selectBoard(first.id, first.title, first.description);
         }
 
-    } catch (error) { console.error(error); }
+    } catch (error) { console.error("Erro estrutura:", error); }
 }
-
-// --- FUNÇÕES DE CONTROLE VISUAL ---
 
 function toggleWorkspace(wsId) {
     const wsDiv = document.getElementById(`ws-${wsId}`);
     wsDiv.classList.toggle('expanded');
 }
 
-// --- FUNÇÕES DE EXCLUSÃO (DELETE) ---
-
-async function deleteWorkspace(wsId) {
-    if (!confirm("ATENÇÃO: Excluir a Área de Trabalho apagará TODOS os quadros e tarefas dentro dela.\n\nTem certeza absoluta?")) return;
-
-    try {
-        const res = await fetch(`${API_WORKSPACES}/${wsId}`, { method: 'DELETE' });
-        if (res.ok) {
-            // Se o quadro atual estava dentro deste workspace, limpa a tela
-            // (Simplificação: recarregamos tudo, se o board sumir, tratamos depois)
-            if (document.getElementById(`ws-${wsId}`).contains(document.getElementById(`board-btn-${currentBoardId}`))) {
-                currentBoardId = null;
-                document.getElementById('currentBoardTitle').innerText = "Selecione um Quadro";
-                document.getElementById('todo').innerHTML = '';
-                document.getElementById('doing').innerHTML = '';
-                document.getElementById('done').innerHTML = '';
-            }
-            loadStructure();
-        } else {
-            alert("Erro ao excluir.");
-        }
-    } catch (e) { console.error(e); }
-}
-
-async function deleteBoard(boardId) {
-    if (!confirm("Excluir este quadro e todas as suas tarefas?")) return;
-
-    try {
-        const res = await fetch(`${API_BOARDS}/${boardId}`, { method: 'DELETE' });
-        if (res.ok) {
-            if (currentBoardId === boardId) {
-                currentBoardId = null;
-                document.getElementById('currentBoardTitle').innerText = "Quadro Excluído";
-                ['todo', 'doing', 'done'].forEach(id => document.getElementById(id).innerHTML = '');
-            }
-            loadStructure();
-        }
-    } catch (e) { console.error(e); }
-}
-
 function selectBoard(boardId, title, description) {
     currentBoardId = boardId;
     document.getElementById('currentBoardId').value = boardId;
-    
-    // Atualiza Header
-    updateHeaderInfo(title, description || "Quadro de Projetos");
+    updateHeaderInfo(title, description);
 
-    // Atualiza Visual da Sidebar (Active State)
+    // Visual Active
     document.querySelectorAll('.board-item').forEach(el => el.classList.remove('active'));
     const activeBtn = document.getElementById(`board-btn-${boardId}`);
     if (activeBtn) activeBtn.classList.add('active');
 
-    // Carrega Tarefas
     fetchTasks();
 }
 
 function updateHeaderInfo(title, desc) {
     document.getElementById('currentBoardTitle').innerText = title;
-    document.getElementById('currentBoardDesc').innerText = desc;
+    document.getElementById('currentBoardDesc').innerText = desc && desc !== 'null' ? desc : "Gerencie suas tarefas";
 }
 
 // ==========================================================================
-// 2. KANBAN DINÂMICO (COLUNAS E TAREFAS)
+// 3. LOGICA DE EDIÇÃO (CRUD WORKSPACES & BOARDS)
+// ==========================================================================
+
+// --- WORKSPACE ---
+const wsModal = document.getElementById('workspaceModal'); // Modal de Criação
+const editWsModal = document.getElementById('editWsModal'); // Modal de Edição
+
+// Criar
+function openWorkspaceModal() { 
+    document.getElementById('newWsTitle').value = "";
+    document.getElementById('newWsIcon').value = "";
+    wsModal.style.display = 'block'; 
+}
+function closeWorkspaceModal() { wsModal.style.display = 'none'; }
+
+async function createWorkspace() {
+    const title = document.getElementById('newWsTitle').value;
+    const icon = document.getElementById('newWsIcon').value || "💼";
+    if(!title) return showAlert("Erro", "Nome obrigatório");
+    
+    await fetch(API_WORKSPACES, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ title, icon })});
+    closeWorkspaceModal();
+    loadStructure();
+}
+
+// Editar
+function openEditWsModal(id, title, icon) {
+    document.getElementById('editWsId').value = id;
+    document.getElementById('editWsTitle').value = title;
+    document.getElementById('editWsIcon').value = icon;
+    editWsModal.style.display = 'block';
+}
+function closeEditWsModal() { editWsModal.style.display = 'none'; }
+
+async function saveWsEdit() {
+    const id = document.getElementById('editWsId').value;
+    const title = document.getElementById('editWsTitle').value;
+    const icon = document.getElementById('editWsIcon').value;
+
+    await fetch(`${API_WORKSPACES}/${id}`, {
+        method: 'PATCH',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ title, icon })
+    });
+    closeEditWsModal();
+    loadStructure();
+}
+
+// --- BOARD ---
+const boardModal = document.getElementById('boardModal'); // Modal de Criação
+const editBoardModal = document.getElementById('editBoardModal'); // Modal de Edição
+
+// Criar
+function openBoardModal(wsId) { 
+    document.getElementById('targetWsId').value = wsId; 
+    document.getElementById('newBoardTitle').value = "";
+    document.getElementById('newBoardDesc').value = "";
+    boardModal.style.display = 'block'; 
+}
+function closeBoardModal() { boardModal.style.display = 'none'; }
+
+async function createBoard() {
+    const title = document.getElementById('newBoardTitle').value;
+    const desc = document.getElementById('newBoardDesc').value;
+    const wsId = document.getElementById('targetWsId').value;
+    if(!title) return showAlert("Erro", "Nome obrigatório");
+    
+    await fetch(API_BOARDS, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ title, description: desc, workspace_id: wsId })});
+    closeBoardModal();
+    loadStructure();
+}
+
+// Editar
+function openEditBoardModal(id, title, desc) {
+    document.getElementById('editBoardId').value = id;
+    document.getElementById('editBoardTitleInput').value = title;
+    document.getElementById('editBoardDescInput').value = desc === 'null' || !desc ? '' : desc;
+    editBoardModal.style.display = 'block';
+}
+function closeEditBoardModal() { editBoardModal.style.display = 'none'; }
+
+async function saveBoardEdit() {
+    const id = document.getElementById('editBoardId').value;
+    const title = document.getElementById('editBoardTitleInput').value;
+    const description = document.getElementById('editBoardDescInput').value;
+
+    await fetch(`${API_BOARDS}/${id}`, {
+        method: 'PATCH',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ title, description })
+    });
+    
+    if (currentBoardId == id) updateHeaderInfo(title, description);
+    
+    closeEditBoardModal();
+    loadStructure();
+}
+
+// ==========================================================================
+// 4. DELEÇÃO (COM CUSTOM ALERT)
+// ==========================================================================
+
+function confirmDeleteWorkspace(id) {
+    showConfirm("Excluir Área?", "Isso apagará TODOS os quadros e tarefas dentro dela. Não há volta.", async () => {
+        await fetch(`${API_WORKSPACES}/${id}`, { method: 'DELETE' });
+        if (currentBoardId) location.reload(); 
+        else loadStructure();
+    });
+}
+
+function confirmDeleteBoard(id) {
+    showConfirm("Excluir Quadro?", "Todas as tarefas serão perdidas.", async () => {
+        await fetch(`${API_BOARDS}/${id}`, { method: 'DELETE' });
+        if (currentBoardId == id) location.reload();
+        else loadStructure();
+    });
+}
+
+function confirmDeleteColumn(id) {
+    showConfirm("Excluir Lista?", "As tarefas desta lista serão apagadas.", async () => {
+        await fetch(`${API_COLUMNS}/${id}`, { method: 'DELETE' });
+        fetchTasks();
+    });
+}
+
+function confirmDeleteTask(id) {
+    showConfirm("Excluir Tarefa?", "Tem certeza?", async () => {
+        await fetch(`${API_TASKS}/${id}`, { method: 'DELETE' });
+        fetchTasks();
+    });
+}
+
+// ==========================================================================
+// 5. KANBAN, CHECKBOXES E TAREFAS
 // ==========================================================================
 
 async function fetchTasks() {
     if (!currentBoardId) return;
 
     const boardContainer = document.getElementById('boardContainer');
-    // Salva o botão de adicionar lista
-    const addListWrapper = document.querySelector('.add-list-wrapper');
-    const addListHtml = addListWrapper ? addListWrapper.outerHTML : ''; 
     
-    // Mostra loading
-    boardContainer.innerHTML = '<div style="color:white; padding:20px">Carregando quadro...</div>';
+    // Salva botão de adicionar lista para restaurar
+    const addListWrapper = document.querySelector('.add-list-wrapper');
+    const addListHtml = addListWrapper ? addListWrapper.outerHTML : null; 
 
     try {
-        console.log(`--- CARREGANDO QUADRO ${currentBoardId} ---`);
-
-        // 1. Buscar Colunas
-        const resCols = await fetch(`/api/boards/${currentBoardId}/columns`);
+        const resCols = await fetch(`${API_BOARDS}/${currentBoardId}/columns`);
         const columns = await resCols.json();
-        console.log("Colunas encontradas:", columns);
-
-        // 2. Buscar Tarefas
+        
         const resTasks = await fetch(`${API_TASKS}?board_id=${currentBoardId}`);
         const tasks = await resTasks.json();
-        console.log("Tarefas encontradas:", tasks);
 
-        // 3. Renderizar Colunas
-        boardContainer.innerHTML = ''; // Limpa loading
+        boardContainer.innerHTML = '';
         
-        if (columns.length === 0) {
-            boardContainer.innerHTML = '<div style="color:#aaa; padding:20px;">Este quadro não tem listas. Crie uma!</div>';
-        }
-
+        // Renderiza Colunas
         columns.forEach(col => {
             const colDiv = document.createElement('div');
             colDiv.className = 'column';
-            colDiv.id = `col-${col.id}`; 
+            colDiv.id = `col-${col.id}`;
             
-            // Note o ID da task-list: list-ID
             colDiv.innerHTML = `
                 <div class="column-header">
                     <h2>${col.title}</h2>
-                    <button onclick="deleteColumn(${col.id})" style="background:none; border:none; color:#555; cursor:pointer;">🗑️</button>
+                    <button onclick="confirmDeleteColumn(${col.id})" title="Excluir Lista" style="background:none; border:none; color:#555; cursor:pointer;">🗑️</button>
                 </div>
-                <div class="task-list" id="list-${col.id}" ondrop="drop(event)" ondragover="allowDrop(event)">
-                    </div>
+                <div class="task-list" id="list-${col.id}" ondrop="drop(event)" ondragover="allowDrop(event)"></div>
             `;
             boardContainer.appendChild(colDiv);
         });
 
-        // Recoloca o botão de adicionar lista
+        // Restaura botão de adicionar lista
         if (addListHtml) {
-            const btnContainer = document.createElement('div');
-            btnContainer.innerHTML = addListHtml;
-            // Pega o primeiro filho (a div wrapper) e adiciona
-            boardContainer.appendChild(btnContainer.firstElementChild);
+            const tempDiv = document.createElement('div');
+            tempDiv.innerHTML = addListHtml;
+            boardContainer.appendChild(tempDiv.firstElementChild);
         } else {
-            // Caso tenha perdido o botão, recria (fallback)
-            const btnWrapper = document.createElement('div');
-            btnWrapper.className = 'add-list-wrapper';
-            btnWrapper.innerHTML = `<button id="showAddListBtn" class="add-list-btn" onclick="showAddListForm()">+ Adicionar outra lista</button>...`; // (simplificado)
-            boardContainer.appendChild(btnWrapper);
+             // Fallback
+             const div = document.createElement('div');
+             div.className = 'add-list-wrapper';
+             div.innerHTML = `
+                <button id="showAddListBtn" class="add-list-btn" onclick="showAddListForm()">+ Adicionar outra lista</button>
+                <div id="addListForm" class="new-list-form" style="display:none; min-width: 280px; background: #2d2d2d; padding: 10px; border-radius: 12px; border: 1px solid #444;">
+                    <input type="text" id="newListTitle" placeholder="Título..." style="width:100%; padding:8px; margin-bottom:8px; border-radius:4px; border:1px solid #555; background:#111; color:white;">
+                    <div style="display: flex; gap: 5px;">
+                        <button onclick="createList()" style="background: var(--accent-color); color:black; font-weight:bold; padding:8px; border-radius:4px; border:none; cursor:pointer; flex-grow:1;">Salvar</button>
+                        <button onclick="hideAddListForm()" style="background:transparent; border:none; color:#aaa; cursor:pointer;">×</button>
+                    </div>
+                </div>`;
+             boardContainer.appendChild(div);
         }
 
-        // 4. Distribuir Tarefas
+        // Renderiza Tarefas
         tasks.forEach(task => {
-            console.log(`Tentando inserir Tarefa "${task.title}" (ID: ${task.id}) na Coluna ID: ${task.column_id}`);
-            
             const listContainer = document.getElementById(`list-${task.column_id}`);
-            
             if (listContainer) {
-                const card = createCardElement(task);
-                listContainer.appendChild(card);
-                console.log("-> Sucesso!");
-            } else {
-                console.error(`-> ERRO: Coluna list-${task.column_id} não encontrada no HTML!`);
+                listContainer.appendChild(createCardElement(task));
             }
         });
 
-    } catch (error) {
-        console.error("Erro fatal ao montar quadro:", error);
-    }
+    } catch (e) { console.error("Erro renderizando board:", e); }
 }
-
-// --- FUNÇÕES DE LISTA (COLUNA) ---
-
-function showAddListForm() {
-    document.getElementById('showAddListBtn').style.display = 'none';
-    document.getElementById('addListForm').style.display = 'block';
-    document.getElementById('newListTitle').focus();
-}
-
-function hideAddListForm() {
-    document.getElementById('showAddListBtn').style.display = 'block';
-    document.getElementById('addListForm').style.display = 'none';
-}
-
-async function createList() {
-    const title = document.getElementById('newListTitle').value.trim();
-    if (!title) return;
-
-    try {
-        await fetch(API_COLUMNS, {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({
-                title: title,
-                board_id: currentBoardId,
-                order_index: 99 // Simplificação: joga pro final
-            })
-        });
-        fetchTasks(); // Recarrega tudo
-    } catch (e) { console.error(e); }
-}
-
-async function deleteColumn(colId) {
-    if(!confirm("Excluir esta lista e todas as tarefas nela?")) return;
-    await fetch(`${API_COLUMNS}/${colId}`, { method: 'DELETE' });
-    fetchTasks();
-}
-
-
 
 function createCardElement(task) {
     const div = document.createElement('div');
     div.className = 'card';
     div.draggable = true;
     div.id = `task-${task.id}`;
-    div.dataset.id = task.id; // Guarda ID no elemento HTML
+    div.dataset.id = task.id;
     
-    // Eventos de Drag e Clique
     div.ondragstart = drag;
-    div.ondblclick = () => openEditModal(task); // Duplo clique para editar
+    div.ondblclick = () => openEditTaskModal(task);
 
-    // Conteúdo do Card
-    // Corta a descrição se for muito longa para não poluir o card
-    const shortDesc = task.description 
-        ? (task.description.length > 60 ? task.description.substring(0, 60) + "..." : task.description)
-        : "";
+    const descShort = task.description ? (task.description.length > 50 ? task.description.substring(0,50) + "..." : task.description) : "";
 
     div.innerHTML = `
-        <h3>${task.title}</h3>
-        ${shortDesc ? `<p>${shortDesc}</p>` : ''}
-        <button class="btn-delete" onclick="event.stopPropagation(); deleteTask(${task.id})" title="Excluir Tarefa">Excluir</button>
+        <div class="card-header-flex">
+            <label class="task-check-wrapper" onclick="event.stopPropagation()">
+                <input type="checkbox">
+                <span class="checkmark"></span>
+            </label>
+            <h3 style="margin:0; flex-grow:1; font-size: 1rem;">${task.title}</h3>
+        </div>
+        ${descShort ? `<p style="margin-left: 32px; margin-top:5px; color:#aaa; font-size:0.85rem;">${descShort}</p>` : ''}
+        <div style="text-align:right; margin-top:10px;">
+             <button class="btn-delete" onclick="event.stopPropagation(); confirmDeleteTask(${task.id})">Excluir</button>
+        </div>
     `;
     return div;
 }
 
-// --- Drag & Drop (Nativo HTML5) ---
-
-function allowDrop(ev) {
-    ev.preventDefault(); // Necessário para permitir o drop
-}
-
-function drag(ev) {
-    ev.dataTransfer.setData("text", ev.target.id);
-    ev.dataTransfer.effectAllowed = "move";
-}
+// --- DRAG AND DROP ---
+function allowDrop(ev) { ev.preventDefault(); }
+function drag(ev) { ev.dataTransfer.setData("text", ev.target.id); }
 
 async function drop(ev) {
     ev.preventDefault();
@@ -327,104 +412,32 @@ async function drop(ev) {
     const card = document.getElementById(data);
     
     let target = ev.target;
-    // Sobe até achar a div .task-list que tem o id "list-{ID}"
+    // Sobe no DOM até achar a lista
     while (!target.classList.contains('task-list')) {
         target = target.parentNode;
         if (!target || target.tagName === 'BODY') return;
     }
     
-    // O id do target é "list-5", pegamos o 5
-    const newColumnId = target.id.replace('list-', '');
-
     // Move visualmente
     target.appendChild(card);
-
-    // Salva no Backend (mudou de column_status string para column_id int)
-    await updateTaskStatus(card.dataset.id, parseInt(newColumnId));
-}
-
-async function updateTaskStatus(taskId, newColumnId) {
-    await fetch(`${API_TASKS}/${taskId}`, {
+    
+    // Salva no banco
+    const newColId = target.id.replace('list-', '');
+    await fetch(`${API_TASKS}/${card.dataset.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ column_id: newColumnId })
+        body: JSON.stringify({ column_id: parseInt(newColId) })
     });
 }
 
-// ==========================================================================
-// 3. CRIAÇÃO E EDIÇÃO (MODAIS)
-// ==========================================================================
-
-// --- WORKSPACE ---
-const wsModal = document.getElementById('workspaceModal');
-function openWorkspaceModal() { 
-    document.getElementById('newWsTitle').value = "";
-    document.getElementById('newWsIcon').value = "";
-    wsModal.style.display = 'block';
-    document.getElementById('newWsTitle').focus();
-}
-function closeWorkspaceModal() { wsModal.style.display = 'none'; }
-
-async function createWorkspace() {
-    const title = document.getElementById('newWsTitle').value.trim();
-    const icon = document.getElementById('newWsIcon').value.trim() || "💼";
-
-    if (!title) return alert("Digite um nome para a Área de Trabalho.");
-
-    await fetch(API_WORKSPACES, {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({ title, icon })
-    });
-    
-    closeWorkspaceModal();
-    loadStructure(); // Recarrega menu lateral
-}
-
-// --- BOARD (QUADRO) ---
-const boardModal = document.getElementById('boardModal');
-function openBoardModal(wsId) { 
-    document.getElementById('targetWsId').value = wsId;
-    document.getElementById('newBoardTitle').value = "";
-    document.getElementById('newBoardDesc').value = "";
-    boardModal.style.display = 'block'; 
-    document.getElementById('newBoardTitle').focus();
-}
-function closeBoardModal() { boardModal.style.display = 'none'; }
-
-async function createBoard() {
-    const title = document.getElementById('newBoardTitle').value.trim();
-    const desc = document.getElementById('newBoardDesc').value.trim();
-    const wsId = document.getElementById('targetWsId').value;
-
-    if (!title) return alert("O quadro precisa de um nome.");
-
-    const res = await fetch(API_BOARDS, {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({ 
-            title: title, 
-            description: desc, 
-            workspace_id: wsId 
-        })
-    });
-    
-    if (res.ok) {
-        const newBoard = await res.json();
-        closeBoardModal();
-        await loadStructure(); // Atualiza menu
-        selectBoard(newBoard.id, newBoard.title, newBoard.description); // Já seleciona o novo
-    }
-}
-
-// --- TAREFAS (TASK) ---
+// --- EDITAR/CRIAR TAREFA (MODAL) ---
 const editModal = document.getElementById("editModal");
 
-function openCreateModal() {
-    if (!currentBoardId) return alert("Por favor, crie ou selecione um Quadro primeiro!");
+function openCreateModal() { 
+    if(!currentBoardId) return showAlert("Ops", "Selecione um quadro primeiro!");
     
     document.getElementById("modalTitle").innerText = "Nova Tarefa";
-    document.getElementById("editTaskId").value = ""; // Vazio = Criar
+    document.getElementById("editTaskId").value = "";
     document.getElementById("editTitle").value = "";
     document.getElementById("editDescription").value = "";
     
@@ -432,139 +445,124 @@ function openCreateModal() {
     document.getElementById("editTitle").focus();
 }
 
-function openEditModal(task) {
+function openEditTaskModal(task) {
     document.getElementById("modalTitle").innerText = "Editar Tarefa";
-    document.getElementById("editTaskId").value = task.id; // Com ID = Editar
+    document.getElementById("editTaskId").value = task.id;
     document.getElementById("editTitle").value = task.title;
     document.getElementById("editDescription").value = task.description || "";
     
     editModal.style.display = "block";
 }
 
-function closeModal() {
-    editModal.style.display = "none";
-}
+function closeModal() { editModal.style.display = "none"; }
 
 async function saveEdit() {
-    // ... (mesmo código de pegar valores) ...
     const id = document.getElementById("editTaskId").value;
     const title = document.getElementById("editTitle").value;
     const description = document.getElementById("editDescription").value;
     
+    if(!title) return showAlert("Atenção", "O título é obrigatório");
+
     const payload = { title, description };
 
     if (id) {
-        await fetch(`${API_TASKS}/${id}`, {
-            method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
-        });
+        // Editar
+        await fetch(`${API_TASKS}/${id}`, { method: 'PATCH', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload)});
     } else {
-        // PRECISAMOS DESCOBRIR A PRIMEIRA COLUNA
-        // Truque: Olhamos pro DOM já renderizado
-        const firstColumn = document.querySelector('.task-list');
-        if (!firstColumn) return alert("Crie uma lista antes de criar tarefas!");
+        // Criar
+        // Descobre a primeira coluna para inserir
+        const firstCol = document.querySelector('.task-list');
+        if(!firstCol) return showAlert("Erro", "Crie uma lista (coluna) antes de adicionar tarefas!");
         
-        const firstColId = firstColumn.id.replace('list-', '');
+        payload.column_id = parseInt(firstCol.id.replace('list-', ''));
         
-        payload.column_id = parseInt(firstColId); // <--- Usa o ID da primeira coluna
-        
-        await fetch(API_TASKS, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
-        });
+        await fetch(API_TASKS, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload)});
     }
-    
     closeModal();
     fetchTasks();
 }
 
-async function deleteTask(id) {
-    if (!confirm("Tem certeza que deseja excluir esta tarefa?")) return;
-    await fetch(`${API_TASKS}/${id}`, { method: 'DELETE' });
+// --- COLUNAS (LISTAS) ---
+function showAddListForm() { document.getElementById('addListForm').style.display = 'block'; document.getElementById('showAddListBtn').style.display = 'none'; document.getElementById('newListTitle').focus(); }
+function hideAddListForm() { document.getElementById('addListForm').style.display = 'none'; document.getElementById('showAddListBtn').style.display = 'block'; }
+
+async function createList() {
+    const title = document.getElementById('newListTitle').value;
+    if(!title) return;
+    
+    await fetch(API_COLUMNS, { 
+        method: 'POST', 
+        headers: {'Content-Type': 'application/json'}, 
+        body: JSON.stringify({ title, board_id: currentBoardId, order_index: 99 })
+    });
     fetchTasks();
 }
 
 // ==========================================================================
-// 4. CONFIGURAÇÕES E UTILITÁRIOS
+// 6. CONFIGURAÇÕES E UTILITÁRIOS
 // ==========================================================================
 
-// Seed Data (Dados de Exemplo)
 async function seedData() {
-    if(!confirm("Isso criará uma estrutura de exemplo (Empresa > Projetos). Continuar?")) return;
-    try {
+    showConfirm("Restaurar dados?", "Isso criará uma estrutura de exemplo.", async () => {
         await fetch(API_SEED, { method: 'POST' });
         loadStructure();
-    } catch (error) {
-        alert("Erro ao criar dados. Verifique se o backend tem a rota /api/seed");
-    }
+    });
 }
 
-// Configurações de Tema (Settings)
+// Configurações (Tema)
 const settingsModal = document.getElementById("settingsModal");
 const root = document.documentElement;
 
 function openSettings() {
-    // Carrega valores atuais nos inputs
     const currentAccent = getComputedStyle(root).getPropertyValue('--accent-color').trim();
     const currentBg = getComputedStyle(root).getPropertyValue('--bg-image');
     
     document.getElementById("accentColorPicker").value = currentAccent;
-    
-    // Limpa a string 'url("...")' para mostrar só o link
     const urlClean = currentBg.replace(/^url\(['"]?/, '').replace(/['"]?\)$/, '');
     document.getElementById("bgImageInput").value = urlClean.startsWith('http') ? urlClean : '';
     
     settingsModal.style.display = "block";
 }
-
-function closeSettings() {
-    settingsModal.style.display = "none";
-}
+function closeSettings() { settingsModal.style.display = "none"; }
 
 function updateTheme() {
     const newAccent = document.getElementById("accentColorPicker").value;
     const newBg = document.getElementById("bgImageInput").value;
 
-    // Atualiza CSS
     root.style.setProperty('--accent-color', newAccent);
-    // Cria um brilho com 30% de opacidade baseado na cor escolhida
     root.style.setProperty('--accent-glow', `0 0 15px ${newAccent}4d`);
 
-    if (newBg) {
-        root.style.setProperty('--bg-image', `url('${newBg}')`);
-    }
+    if (newBg) root.style.setProperty('--bg-image', `url('${newBg}')`);
 
-    // Persiste no LocalStorage
     localStorage.setItem('devboard_accent', newAccent);
     localStorage.setItem('devboard_bg', newBg);
 }
 
 function resetTheme() {
-    if(!confirm("Voltar ao tema original?")) return;
-    localStorage.removeItem('devboard_accent');
-    localStorage.removeItem('devboard_bg');
-    location.reload(); // Recarrega para pegar os padrões do CSS
+    showConfirm("Resetar tema?", "Voltar às cores originais?", () => {
+        localStorage.removeItem('devboard_accent');
+        localStorage.removeItem('devboard_bg');
+        location.reload();
+    });
 }
 
 function loadPreferences() {
     const savedAccent = localStorage.getItem('devboard_accent');
     const savedBg = localStorage.getItem('devboard_bg');
-
     if (savedAccent) {
         root.style.setProperty('--accent-color', savedAccent);
         root.style.setProperty('--accent-glow', `0 0 15px ${savedAccent}4d`);
     }
-    if (savedBg) {
-        root.style.setProperty('--bg-image', `url('${savedBg}')`);
-    }
+    if (savedBg) root.style.setProperty('--bg-image', `url('${savedBg}')`);
 }
 
-// Fechar modais ao clicar fora da janela (backdrop)
+// Fechar modais ao clicar fora
 window.onclick = function(event) {
     if (event.target == settingsModal) closeSettings();
     if (event.target == editModal) closeModal();
     if (event.target == wsModal) closeWorkspaceModal();
     if (event.target == boardModal) closeBoardModal();
+    if (event.target == editWsModal) closeEditWsModal();
+    if (event.target == editBoardModal) closeEditBoardModal();
+    if (event.target == customAlertOverlay) closeCustomAlert();
 }

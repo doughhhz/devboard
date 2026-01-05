@@ -6,7 +6,7 @@ from fastapi import HTTPException
 
 from app.db.session import get_db
 from app.models.structure import Workspace, Board, Column
-from app.schemas.structure import WorkspaceCreate, BoardCreate, WorkspaceResponse, BoardResponse, ColumnCreate, ColumnResponse
+from app.schemas.structure import WorkspaceCreate, BoardCreate, WorkspaceResponse, BoardResponse, ColumnCreate, ColumnResponse, BoardUpdate, WorkspaceUpdate
 
 router = APIRouter()
 
@@ -88,3 +88,33 @@ async def delete_column(column_id: int, db: AsyncSession = Depends(get_db)):
     await db.delete(col)
     await db.commit()
     return None
+
+# --- UPDATE WORKSPACE ---
+@router.patch("/workspaces/{ws_id}", response_model=WorkspaceResponse)
+async def update_workspace(ws_id: int, ws_update: WorkspaceUpdate, db: AsyncSession = Depends(get_db)):
+    ws = await db.get(Workspace, ws_id)
+    if not ws:
+        raise HTTPException(status_code=404, detail="Workspace não encontrado")
+    
+    update_data = ws_update.model_dump(exclude_unset=True)
+    for key, value in update_data.items():
+        setattr(ws, key, value)
+
+    await db.commit()
+    await db.refresh(ws)
+    return ws
+
+# --- UPDATE BOARD ---
+@router.patch("/boards/{board_id}", response_model=BoardResponse)
+async def update_board(board_id: int, board_update: BoardUpdate, db: AsyncSession = Depends(get_db)):
+    board = await db.get(Board, board_id)
+    if not board:
+        raise HTTPException(status_code=404, detail="Quadro não encontrado")
+
+    update_data = board_update.model_dump(exclude_unset=True)
+    for key, value in update_data.items():
+        setattr(board, key, value)
+
+    await db.commit()
+    await db.refresh(board)
+    return board
