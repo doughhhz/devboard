@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DevBoard - Kanban</title>
+    <link rel="stylesheet" href="/static/css/styles.css">
+</head>
+<body>
+    <div class="app-container">
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <div>
+                    <h1 style="font-size: 1.4rem; margin: 0;">DevBoard</h1>
+                    <span style="font-size: 0.7rem; color: var(--text-secondary); letter-spacing: 1px;">WORKSPACES</span>
+                </div>
+                <button onclick="openWorkspaceModal()" class="btn-icon-small" title="Nova Área de Trabalho">+</button>
+            </div>
+            
+            <div id="sidebarContent" style="flex-grow: 1; overflow-y: auto;">
+                </div>
+            
+            <div style="padding: 20px; border-top: 1px solid var(--glass-border);">
+                <button onclick="seedData()" style="width:100%; font-size: 0.75rem; background: transparent; border: 1px dashed #555; color: #777; padding: 8px; border-radius: 6px; cursor: pointer;">
+                    ↺ Restaurar Exemplo
+                </button>
+            </div>
+        </aside>
+
+        <main class="main-content">
+            <header>
+                <div>
+                    <h2 id="currentBoardTitle" style="margin:0; font-size:1.6rem; color: white;">Selecione um Quadro</h2>
+                    <p id="currentBoardDesc" style="margin: 5px 0 0 0; font-size: 0.9rem; color: var(--text-secondary);">Navegue pelo menu lateral</p>
+                </div>
+
+                <div class="top-actions">
+                    <button onclick="openSettings()" title="Aparência">🎨 Tema</button>
+                    <button onclick="openCreateModal()" style="background: var(--accent-color); color: #000; font-weight: 700; box-shadow: var(--accent-glow);">
+                        + Nova Tarefa
+                    </button>
+                </div>
+            </header>
+
+            <div class="board" id="boardContainer">
+                <div class="add-list-wrapper">
+                    <button id="showAddListBtn" class="add-list-btn" onclick="showAddListForm()">+ Adicionar outra lista</button>
+                    <div id="addListForm" class="new-list-form" style="display:none; min-width: 280px; background: #1e1e1e; padding: 10px; border-radius: 12px;">
+                        <input type="text" id="newListTitle" placeholder="Título da lista..." style="margin-bottom: 5px;">
+                        <div style="display: flex; gap: 5px;">
+                            <button onclick="createList()" style="background: var(--accent-color); color:black; font-weight:bold; flex-grow:1;">Adicionar</button>
+                            <button onclick="hideAddListForm()" style="background:transparent; border:none; color:#aaa; cursor:pointer;">✕</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <div id="settingsModal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn" onclick="closeSettings()">&times;</span>
+            <h2 style="color: var(--accent-color)">Aparência</h2>
+            
+            <div class="settings-group">
+                <label>Cor Neon (Accent)</label>
+                <input type="color" id="accentColorPicker" onchange="updateTheme()">
+            </div>
+
+            <div class="settings-group">
+                <label>Imagem de Fundo (URL)</label>
+                <input type="url" id="bgImageInput" placeholder="https://...">
+                <button onclick="updateTheme()" style="margin-top:8px; width:100%; padding:8px; cursor:pointer;">Aplicar</button>
+            </div>
+
+            <div class="settings-group" style="margin-top: 30px; border-top: 1px solid #333; padding-top: 15px;">
+                <button onclick="resetTheme()" style="background: #d9534f; color: white; width: 100%; border:none; padding:10px; border-radius:5px; cursor:pointer;">Resetar Padrões</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="editModal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn" onclick="closeModal()">&times;</span>
+            <h2 id="modalTitle">Tarefa</h2>
+            
+            <input type="hidden" id="editTaskId">
+            
+            <label style="font-size:0.8rem; color:#888;">Título</label>
+            <input type="text" id="editTitle" class="modal-input" style="font-size: 1.1rem; font-weight: bold; margin-bottom: 15px;">
+            
+            <label style="font-size:0.8rem; color:#888;">Detalhes</label>
+            <textarea id="editDescription" rows="6" class="modal-input" placeholder="Descreva a tarefa..."></textarea>
+            
+            <div style="text-align: right; margin-top: 20px;">
+                <button onclick="saveEdit()" style="background: var(--accent-color); color: black; border: none; padding: 10px 30px; border-radius: 8px; font-weight: bold; cursor: pointer;">Salvar</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="workspaceModal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn" onclick="closeWorkspaceModal()">&times;</span>
+            <h2>Nova Área de Trabalho</h2>
+            <p style="font-size: 0.9rem; color: #aaa; margin-bottom: 20px;">Crie um espaço para agrupar seus projetos (Ex: Pessoal, Empresa).</p>
+            
+            <label>Nome da Área</label>
+            <input type="text" id="newWsTitle" placeholder="Ex: Marketing" class="modal-input">
+            
+            <label>Ícone (Emoji)</label>
+            <input type="text" id="newWsIcon" placeholder="Ex: 🚀" class="modal-input" maxlength="2">
+            
+            <div style="text-align: right; margin-top: 20px;">
+                <button onclick="createWorkspace()" style="background: var(--accent-color); color: black; border: none; padding: 10px 20px; border-radius: 5px; font-weight: bold; cursor: pointer;">Criar Área</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="boardModal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn" onclick="closeBoardModal()">&times;</span>
+            <h2>Novo Quadro de Projetos</h2>
+            
+            <input type="hidden" id="targetWsId">
+            
+            <label>Nome do Projeto</label>
+            <input type="text" id="newBoardTitle" placeholder="Ex: Lançamento Site" class="modal-input">
+            
+            <label>Descrição (Opcional)</label>
+            <textarea id="newBoardDesc" placeholder="Objetivo do projeto..." class="modal-input" rows="3"></textarea>
+            
+            <div style="text-align: right; margin-top: 20px;">
+                <button onclick="createBoard()" style="background: var(--accent-color); color: black; border: none; padding: 10px 20px; border-radius: 5px; font-weight: bold; cursor: pointer;">Criar Quadro</button>
+            </div>
+        </div>
+    </div>
+    
+    <input type="hidden" id="currentBoardId" value="">
+
+    <script src="/static/js/app.js"></script>
+</body>
+</html>

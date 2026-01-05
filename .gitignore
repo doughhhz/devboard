@@ -1,0 +1,25 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+.venv/
+
+# Variáveis de Ambiente (SEGURANÇA MÁXIMA)
+.env
+
+# Banco de Dados e Docker
+postgres_data/
+*.sqlite3
+*.db
+
+# IDEs
+.vscode/
+.idea/
+
+# Sistema Operacional
+.DS_Store
+Thumbs.db
