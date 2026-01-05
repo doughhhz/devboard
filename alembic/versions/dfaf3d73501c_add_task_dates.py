@@ -1,8 +1,8 @@
-"""reset com correcoes
+"""add task dates
 
-Revision ID: 7d5f74fc3db4
+Revision ID: dfaf3d73501c
 Revises: 
-Create Date: 2026-01-05 14:39:42.982024
+Create Date: 2026-01-05 17:05:32.330771
 
 """
 from typing import Sequence, Union
@@ -12,7 +12,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision: str = '7d5f74fc3db4'
+revision: str = 'dfaf3d73501c'
 down_revision: Union[str, Sequence[str], None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -50,6 +50,8 @@ def upgrade() -> None:
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('title', sa.String(length=100), nullable=False),
     sa.Column('description', sa.Text(), nullable=True),
+    sa.Column('start_date', sa.Date(), nullable=True),
+    sa.Column('due_date', sa.Date(), nullable=False),
     sa.Column('column_id', sa.Integer(), nullable=False),
     sa.Column('created_at', sa.DateTime(), server_default=sa.text('now()'), nullable=False),
     sa.Column('updated_at', sa.DateTime(), server_default=sa.text('now()'), nullable=False),

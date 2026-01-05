@@ -24,7 +24,9 @@ async def create_task(task: TaskCreate, db: AsyncSession = Depends(get_db)):
     new_task = Task(
         title=task.title,
         description=task.description,
-        column_id=task.column_id # <--- Confirme que está assim
+        column_id=task.column_id,
+        start_date=task.start_date, # Novo
+        due_date=task.due_date      # Novo
     )
     db.add(new_task)
     await db.commit()

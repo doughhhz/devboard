@@ -82,18 +82,35 @@
     <div id="editModal" class="modal">
         <div class="modal-content">
             <span class="close-btn" onclick="closeModal()">&times;</span>
-            <h2 id="modalTitle">Tarefa</h2>
+            <h2 id="modalTitle" style="margin-bottom: 25px; border-bottom: 1px solid #333; padding-bottom: 15px;">Tarefa</h2>
             
             <input type="hidden" id="editTaskId">
             
-            <label style="font-size:0.8rem; color:#888;">Título</label>
-            <input type="text" id="editTitle" class="modal-input" style="font-size: 1.1rem; font-weight: bold; margin-bottom: 15px;">
+            <div class="form-group" style="margin-bottom: 20px;">
+                <label>TÍTULO DA TAREFA</label>
+                <input type="text" id="editTitle" class="modal-input" placeholder="Ex: Finalizar Relatório..." style="font-size: 1.1rem; font-weight: 600;">
+            </div>
             
-            <label style="font-size:0.8rem; color:#888;">Detalhes</label>
-            <textarea id="editDescription" rows="6" class="modal-input" placeholder="Descreva a tarefa..."></textarea>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>DATA DE INÍCIO (Opcional)</label>
+                    <input type="date" id="editStartDate" class="modal-input">
+                </div>
+                <div class="form-group">
+                    <label>DATA DE VENCIMENTO <span style="color:var(--accent-color)">*</span></label>
+                    <input type="date" id="editDueDate" class="modal-input">
+                </div>
+            </div>
             
-            <div style="text-align: right; margin-top: 20px;">
-                <button onclick="saveEdit()" style="background: var(--accent-color); color: black; border: none; padding: 10px 30px; border-radius: 8px; font-weight: bold; cursor: pointer;">Salvar</button>
+            <div class="form-group">
+                <label>DETALHES / DESCRIÇÃO</label>
+                <textarea id="editDescription" rows="5" class="modal-input" placeholder="Descreva os passos necessários..."></textarea>
+            </div>
+            
+            <div style="text-align: right; margin-top: 25px; padding-top: 20px; border-top: 1px solid #333;">
+                <button onclick="saveEdit()" class="btn-primary" style="background: var(--accent-color); color: black; padding: 12px 30px; font-size: 1rem; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; transition: transform 0.1s;">
+                    Salvar Tarefa
+                </button>
             </div>
         </div>
     </div>

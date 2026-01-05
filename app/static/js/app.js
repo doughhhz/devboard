@@ -18,7 +18,7 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 // ==========================================================================
-// 1. SISTEMA DE ALERTAS CUSTOMIZADOS (UI/UX)
+// 1. SISTEMA DE ALERTAS CUSTOMIZADOS (CORRIGIDO)
 // ==========================================================================
 
 const customAlertOverlay = document.getElementById("customAlert");
@@ -35,11 +35,9 @@ function showConfirm(title, msg, onConfirm) {
     btnCancel.style.display = "inline-block";
     btnConfirm.innerText = "Confirmar";
     
-    // Remove listeners antigos para evitar duplicação
-    const newBtn = btnConfirm.cloneNode(true);
-    btnConfirm.parentNode.replaceChild(newBtn, btnConfirm);
-    
-    newBtn.onclick = () => {
+    // CORREÇÃO: Não clonamos mais o botão. Apenas sobrescrevemos o evento.
+    // Isso garante que a variável 'btnConfirm' sempre aponte para o elemento real na tela.
+    btnConfirm.onclick = () => {
         onConfirm();
         closeCustomAlert();
     };
@@ -51,19 +49,21 @@ function showConfirm(title, msg, onConfirm) {
 function showAlert(title, msg) {
     alertTitle.innerText = title;
     alertMessage.innerText = msg;
+    
     btnCancel.style.display = "none";
     btnConfirm.innerText = "OK";
     
-    const newBtn = btnConfirm.cloneNode(true);
-    btnConfirm.parentNode.replaceChild(newBtn, btnConfirm);
-    
-    newBtn.onclick = closeCustomAlert;
+    // CORREÇÃO: Sobrescrevemos o evento para apenas fechar
+    btnConfirm.onclick = closeCustomAlert;
     
     customAlertOverlay.style.display = "flex";
 }
 
 function closeCustomAlert() {
     customAlertOverlay.style.display = "none";
+    
+    // Boa prática: Limpar o evento ao fechar para evitar disparos acidentais
+    btnConfirm.onclick = null; 
 }
 
 // ==========================================================================
@@ -431,6 +431,7 @@ async function drop(ev) {
 }
 
 // --- EDITAR/CRIAR TAREFA (MODAL) ---
+// --- EDITAR/CRIAR TAREFA (MODAL) ---
 const editModal = document.getElementById("editModal");
 
 function openCreateModal() { 
@@ -438,8 +439,12 @@ function openCreateModal() {
     
     document.getElementById("modalTitle").innerText = "Nova Tarefa";
     document.getElementById("editTaskId").value = "";
+    
+    // Limpar campos
     document.getElementById("editTitle").value = "";
     document.getElementById("editDescription").value = "";
+    document.getElementById("editStartDate").value = "";
+    document.getElementById("editDueDate").value = ""; // Importante limpar
     
     editModal.style.display = "block";
     document.getElementById("editTitle").focus();
@@ -451,6 +456,10 @@ function openEditTaskModal(task) {
     document.getElementById("editTitle").value = task.title;
     document.getElementById("editDescription").value = task.description || "";
     
+    // Preencher datas (Se existirem)
+    document.getElementById("editStartDate").value = task.start_date || "";
+    document.getElementById("editDueDate").value = task.due_date || "";
+    
     editModal.style.display = "block";
 }
 
@@ -458,28 +467,52 @@ function closeModal() { editModal.style.display = "none"; }
 
 async function saveEdit() {
     const id = document.getElementById("editTaskId").value;
-    const title = document.getElementById("editTitle").value;
-    const description = document.getElementById("editDescription").value;
+    const title = document.getElementById("editTitle").value.trim();
+    const description = document.getElementById("editDescription").value.trim();
     
+    // Capturar novas datas
+    const startDate = document.getElementById("editStartDate").value;
+    const dueDate = document.getElementById("editDueDate").value;
+    
+    // Validação
     if(!title) return showAlert("Atenção", "O título é obrigatório");
+    if(!dueDate) return showAlert("Atenção", "A Data de Vencimento é obrigatória!");
 
-    const payload = { title, description };
+    // Montar Payload
+    const payload = { 
+        title, 
+        description,
+        start_date: startDate || null, // Envia null se estiver vazio
+        due_date: dueDate
+    };
 
-    if (id) {
-        // Editar
-        await fetch(`${API_TASKS}/${id}`, { method: 'PATCH', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload)});
-    } else {
-        // Criar
-        // Descobre a primeira coluna para inserir
-        const firstCol = document.querySelector('.task-list');
-        if(!firstCol) return showAlert("Erro", "Crie uma lista (coluna) antes de adicionar tarefas!");
-        
-        payload.column_id = parseInt(firstCol.id.replace('list-', ''));
-        
-        await fetch(API_TASKS, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload)});
+    try {
+        if (id) {
+            // Editar
+            await fetch(`${API_TASKS}/${id}`, { 
+                method: 'PATCH', 
+                headers: {'Content-Type': 'application/json'}, 
+                body: JSON.stringify(payload)
+            });
+        } else {
+            // Criar
+            const firstCol = document.querySelector('.task-list');
+            if(!firstCol) return showAlert("Erro", "Crie uma lista (coluna) antes de adicionar tarefas!");
+            
+            payload.column_id = parseInt(firstCol.id.replace('list-', ''));
+            
+            await fetch(API_TASKS, { 
+                method: 'POST', 
+                headers: {'Content-Type': 'application/json'}, 
+                body: JSON.stringify(payload)
+            });
+        }
+        closeModal();
+        fetchTasks();
+    } catch (error) {
+        console.error("Erro ao salvar:", error);
+        showAlert("Erro", "Falha ao salvar tarefa.");
     }
-    closeModal();
-    fetchTasks();
 }
 
 // --- COLUNAS (LISTAS) ---

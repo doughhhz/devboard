@@ -1,23 +1,27 @@
 from pydantic import BaseModel, ConfigDict
-from datetime import datetime
+from datetime import date, datetime
 from typing import Optional
 
 # Base comum
 class TaskBase(BaseModel):
     title: str
     description: Optional[str] = None
+    start_date: Optional[date] = None # Opcional
+    due_date: date                    # Obrigatório (sem Optional, sem default)
 
-# O que o Frontend TEM que mandar para Criar
+# Criação (Frontend envia isso)
 class TaskCreate(TaskBase):
-    column_id: int  # <--- Verifique se isso está aqui! (Antes era board_id)
+    column_id: int 
 
-# O que o Frontend PODE mandar para Atualizar
+# Atualização (Frontend envia isso ao editar)
 class TaskUpdate(BaseModel):
     title: Optional[str] = None
     description: Optional[str] = None
+    start_date: Optional[date] = None
+    due_date: Optional[date] = None
     column_id: Optional[int] = None
 
-# O que o Backend DEVOLVE para o Frontend
+# Resposta (Backend devolve isso)
 class TaskResponse(TaskBase):
     id: int
     column_id: int

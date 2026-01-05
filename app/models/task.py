@@ -1,6 +1,6 @@
-from typing import TYPE_CHECKING, Optional
-from datetime import datetime
-from sqlalchemy import String, Text, func, ForeignKey
+from typing import TYPE_CHECKING
+from datetime import date, datetime
+from sqlalchemy import String, Text, func, ForeignKey, Date
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.db.base import Base
 
@@ -14,7 +14,10 @@ class Task(Base):
     title: Mapped[str] = mapped_column(String(100), index=True)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     
-    # MUDANÇA CRÍTICA: Sai column_status e board_id, entra column_id
+    # NOVOS CAMPOS
+    start_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    due_date: Mapped[date] = mapped_column(Date, nullable=False) # Obrigatório (nullable=False)
+
     column_id: Mapped[int] = mapped_column(ForeignKey("columns.id"))
     column: Mapped["Column"] = relationship(back_populates="tasks")
 
